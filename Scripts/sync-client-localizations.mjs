@@ -8,7 +8,18 @@ const catalog = JSON.parse(fs.readFileSync(path.join(root, 'nexawal-explorer/cli
 const iosPath = path.join(root, 'nexawal/nexawal/Localizable.xcstrings');
 const gpuiPath = path.join(root, 'nexawal-gpui/assets/l10n.json');
 const ios = JSON.parse(fs.readFileSync(iosPath, 'utf8'));
-const gpui = JSON.parse(fs.readFileSync(gpuiPath, 'utf8'));
+const gpuiText = fs.readFileSync(gpuiPath, 'utf8');
+const gpui = JSON.parse(gpuiText);
+// JSON.stringify otherwise moves integer-like keys ("0", "1") to the front.
+// Preserve existing catalog order to avoid unrelated localization churn.
+const order = {};
+let language;
+for (const line of gpuiText.split('\n')) {
+  const locale = line.match(/^  ("(?:[^"\\]|\\.)+"): \{/);
+  if (locale) { language = JSON.parse(locale[1]); order[language] = []; }
+  const key = line.match(/^    ("(?:[^"\\]|\\.)*"): /);
+  if (key && language) order[language].push(JSON.parse(key[1]));
+}
 const names = ['details', 'enable', 'help', 'reported', 'disabled', 'missing', 'unavailable', 'node_stale', 'observed', 'mainnet', 'refresh', 'save_failed'];
 assert.deepEqual(Object.keys(catalog).sort(), Object.keys(gpui).sort());
 const escaped = s => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll("'", "\\'").replaceAll('"', '\\"');
@@ -33,5 +44,9 @@ for (const [locale, strings] of Object.entries(catalog)) {
   fs.writeFileSync(path.join(dir, 'explorer.xml'), xml);
 }
 fs.writeFileSync(iosPath, JSON.stringify(ios, null, 2)+'\n');
-fs.writeFileSync(gpuiPath, JSON.stringify(gpui, null, 2)+'\n');
+const sections = Object.entries(gpui).map(([locale, strings]) => {
+  const keys = [...order[locale], ...Object.keys(strings).filter(key => !order[locale].includes(key))];
+  return `  ${JSON.stringify(locale)}: {\n${keys.map(key => `    ${JSON.stringify(key)}: ${JSON.stringify(strings[key])}`).join(',\n')}\n  }`;
+});
+fs.writeFileSync(gpuiPath, `{\n${sections.join(',\n')}\n}\n`);
 console.log(`Synchronized ${names.length} explorer strings across ${Object.keys(catalog).length} locales in all three clients.`);
