@@ -71,7 +71,9 @@ curl http://127.0.0.1:8088/readyz
 
 The container is non-root, read-only, capability-dropped and limited to 256 MiB / 1 CPU. No chain volume is mounted. Public HTTP is **not** exposed by Compose; port 8088 binds host loopback. Set `EXPLORER_RPC_URL` to your existing node's private reachable RPC origin when co-located. Inside Docker, `127.0.0.1` refers to that container, not the host or another container. Do not replace or restart the running Cuprate to add this service.
 
-`deploy/Caddyfile.example` contains **scoped global logging settings plus an example site for explorer.nexawal.com**, not a replacement for existing rates/RPC Caddy configuration. Merge settings into the one existing global block and preserve other sites' configuration. Deployment, DNS, I2P setup, and changes to wallet explorer links require a separate rollout. The app links still point to xmrchain.net.
+`deploy/Caddyfile.example` contains **scoped global logging settings plus an example site for explorer.nexawal.com**, not a replacement for existing rates/RPC Caddy configuration. Merge settings into the one existing global block and preserve other sites' configuration.
+
+The Mini deployment is live at **https://explorer.nexawal.com**. Its separate container runs in `cuprate-vm` and host Caddy proxies to the private VM interface. See [the deployment runbook](deploy/README.md), `deploy/compose.incus.yml`, and the custom rate-limited `deploy/Caddyfile.incus.example`. The local Compose file above is not the VM runtime file. No chain database is mounted and Cuprate need not restart. I2P setup and changes to wallet explorer links remain separate work; the wallet apps still point to xmrchain.net.
 
 Railway can run the same image with `EXPLORER_BIND=0.0.0.0:8080`, target port 8080 and an explicitly configured RPC URL. No Railway deployment is performed by this repo. Docker bases are digest-pinned, but Debian package repositories are not snapshotted: this is not a byte-reproducible-image claim. Update base digests deliberately for security maintenance.
 

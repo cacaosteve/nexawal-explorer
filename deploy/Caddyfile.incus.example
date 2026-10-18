@@ -25,7 +25,9 @@
 }
 
 explorer.nexawal.com {
-    log nexawal_explorer { output discard }
+    log nexawal_explorer {
+        output discard
+    }
     rate_limit {
         zone explorer_per_ip_second {
             key {remote_host}
@@ -40,7 +42,9 @@ explorer.nexawal.com {
             ipv6_prefix 64
         }
     }
-    request_body { max_size 1KB }
+    request_body {
+        max_size 1KB
+    }
     reverse_proxy http://10.62.67.10:8088 {
         transport http {
             dial_timeout 3s
