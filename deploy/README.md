@@ -4,6 +4,11 @@ The explorer is a separate Docker Compose project inside `cuprate-vm`, alongside
 but not part of the Cuprate Compose project. It mounts no chain data and uses
 only the existing restricted RPC at `http://10.62.67.10:18092`.
 
+The current public wallet RPC is `https://rpc.nexawal.com`; rates are served by
+Railway at `https://rates.nexawal.com`. The explorer's private RPC URL does not
+change when those public names change. Historical verification records retain
+the hostnames used at the time of each check.
+
 Host Caddy terminates HTTPS for `explorer.nexawal.com` and proxies to
 `10.62.67.10:8088`. That listener is on the private Incus interface, not a WAN
 port forward. Do not expose port 8088 on the router. The public DNS record is

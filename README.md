@@ -6,7 +6,7 @@ A standalone, server-rendered Monero explorer for **Cuprate RPC**, with monerod-
 
 ```sh
 cd /Users/steve/supermegamartandwalletcore/nexawal-explorer
-EXPLORER_BIND=127.0.0.1:18099 EXPLORER_RPC_URL=https://rpc.nexatrode.com cargo run --locked --release
+EXPLORER_BIND=127.0.0.1:18099 EXPLORER_RPC_URL=https://rpc.nexawal.com cargo run --locked --release
 ```
 
 Open **http://127.0.0.1:18099**. The example avoids a local nginx already using port 8080. The application's default is `127.0.0.1:8080`. `EXPLORER_BIND` accepts an IP and port; the Docker image binds `0.0.0.0:8080` inside its container. The configured RPC URL must be an HTTP(S) origin, with no path, credentials, query, or fragment. It is operator configuration, never a visitor-supplied URL. Outbound HTTP redirects and environment HTTP proxies are disabled deliberately.
@@ -86,7 +86,7 @@ cargo test --locked --all-targets
 # Optional local proxy-outage regression; Docker + Node 18+, synthetic data only.
 node Scripts/test-proxy-privacy.mjs
 # Opt in: reads a small number of public node records; never sends funds.
-EXPLORER_TEST_RPC_URL=https://rpc.nexatrode.com cargo test --locked --test live -- --ignored --nocapture
+EXPLORER_TEST_RPC_URL=https://rpc.nexawal.com cargo test --locked --test live -- --ignored --nocapture
 ```
 
 `Cargo.lock` is included for binary dependency resolution and should be committed with the source. There are no automatic GitHub Actions workflows. Offline fixture tests cover missing/pending/confirmed transactions, parsing/fees, same-height tip changes, cache coalescing, upstream errors, output escaping and security headers. Live tests do not prove future daemon compatibility or a production security audit.

@@ -7,7 +7,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "127.0.0.1:8080".into())
         .parse()?;
     let upstream =
-        env::var("EXPLORER_RPC_URL").unwrap_or_else(|_| "https://rpc.nexatrode.com".into());
+        env::var("EXPLORER_RPC_URL").unwrap_or_else(|_| "https://rpc.nexawal.com".into());
     let max_tip_age_secs = match env::var("EXPLORER_MAX_TIP_AGE_SECS") {
         Ok(value) => value.parse::<u64>()?,
         Err(env::VarError::NotPresent) => DEFAULT_MAX_TIP_AGE_SECS,

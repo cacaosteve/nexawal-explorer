@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 25s
     environment:
-      EXPLORER_RPC_URL: ${EXPLORER_RPC_URL:-https://rpc.nexatrode.com}
+      EXPLORER_RPC_URL: ${EXPLORER_RPC_URL:-https://rpc.nexawal.com}
       EXPLORER_BIND: 0.0.0.0:8080
       EXPLORER_MAX_TIP_AGE_SECS: ${EXPLORER_MAX_TIP_AGE_SECS:-3600}
     ports:
