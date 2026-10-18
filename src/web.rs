@@ -9,7 +9,7 @@ use axum::{
     middleware::{self, Next},
     response::{IntoResponse, Redirect, Response},
     routing::get,
-    Router,
+    Json, Router,
 };
 use serde::Deserialize;
 use std::{fmt::Write, sync::Arc, time::Duration};
@@ -35,6 +35,7 @@ fn routes(app: App) -> Router {
         .route("/blocks", get(blocks))
         .route("/block/{id}", get(block))
         .route("/tx/{id}", get(transaction))
+        .route("/api/v1/transactions/{id}", get(api_transaction))
         .route("/mempool", get(mempool))
         .route("/search", get(search))
         .route("/about", get(about))
@@ -51,8 +52,16 @@ fn routes(app: App) -> Router {
 }
 
 async fn protect(State(app): State<App>, request: Request, next: Next) -> Response {
+    let is_api = request.uri().path().starts_with("/api/");
+    let failure = |error| {
+        if is_api {
+            crate::api::fail(error)
+        } else {
+            fail(error, None)
+        }
+    };
     let mut response = if request.uri().to_string().len() > 1024 {
-        fail(Error::InvalidInput, None)
+        failure(Error::InvalidInput)
     } else if request.uri().path() == "/healthz" {
         // Liveness must not share the admission budget for node-dependent work.
         // This fixed route performs no upstream calls, even under saturation.
@@ -60,11 +69,25 @@ async fn protect(State(app): State<App>, request: Request, next: Next) -> Respon
     } else if let Ok(_permit) = app.requests.clone().try_acquire_owned() {
         match tokio::time::timeout(Duration::from_secs(20), next.run(request)).await {
             Ok(response) => response,
-            Err(_) => fail(Error::Unavailable, None),
+            Err(_) => failure(Error::Unavailable),
         }
     } else {
-        fail(Error::Busy, None)
+        failure(Error::Busy)
     };
+    // Framework rejections, unknown API routes and method errors are JSON too.
+    if is_api
+        && !response.status().is_success()
+        && response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .is_none_or(|v| v != "application/json")
+    {
+        response = crate::api::fail(if response.status() == StatusCode::NOT_FOUND {
+            Error::NotFound
+        } else {
+            Error::InvalidInput
+        });
+    }
     let headers = response.headers_mut();
     headers.insert("content-security-policy", HeaderValue::from_static("default-src 'none'; script-src 'none'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"));
     headers.insert("referrer-policy", HeaderValue::from_static("no-referrer"));
@@ -108,6 +131,20 @@ pub fn fail(error: Error, s: Option<&Snapshot>) -> Response {
             .insert(header::RETRY_AFTER, HeaderValue::from_static("5"));
     }
     response
+}
+
+async fn api_transaction(
+    State(app): State<App>,
+    Path(id): Path<String>,
+    uri: axum::http::Uri,
+) -> Response {
+    if uri.query().is_some() {
+        return crate::api::fail(Error::InvalidInput);
+    }
+    match crate::api::transaction(&app.rpc, &id).await {
+        Ok(observation) => Json(observation).into_response(),
+        Err(error) => crate::api::fail(error),
+    }
 }
 
 #[derive(Default, Deserialize)]
@@ -599,6 +636,7 @@ async fn about() -> Response {
     let body = concat!(
         "<section class=panel><h2>A simpler Monero explorer</h2><p>Server-rendered HTML and local CSS. No JavaScript, cookies, browser storage, analytics, external fonts, images, or automatic refresh. No wallet or login is required.</p>",
         "<p>The service queries one operator-configured Cuprate or monerod RPC endpoint. It does not mount a blockchain database, scan a wallet, or accept private view keys, spend keys, seed phrases, signed transactions, or transaction submission requests.</p>",
+        "<p>A read-only JSON transaction summary is also available at <code>/api/v1/transactions/{txid}</code>. Optional native app lookups share the requested transaction ID and connection metadata with this service, just like opening its transaction page. This is not a wallet verification service or a general-purpose RPC proxy.</p>",
         "<h2>What an explorer cannot tell you</h2><p>Monero hides RingCT transfer amounts and recipients. Public output keys are not recipient addresses. Ring members are not a list of real senders. Check receipt of a payment in your own wallet.</p>",
         "<h2>Your searches are not anonymous by default</h2><p>The operator and hosting/network providers may observe your IP address and requested transaction IDs. Application access logging is disabled, but reverse proxies, hosting providers, and upstream nodes have their own policies. No-JavaScript does not mean no metadata. Use an operator you trust, or self-host. Use a separately configured Tor or I2P service when available; this deployment does not automatically provide either.</p>",
         "<h2>Freshness and failures</h2><p>Node observations and successful RPC responses are cached in memory for at most five seconds. Chain-dependent cache keys include the observed tip hash and height. Browser pages are not cached. Confirmed transaction pages verify that the containing block returned by the node includes the transaction and use that block's timestamp.</p>",
@@ -660,7 +698,7 @@ mod tests {
             assert_eq!(response.status(), StatusCode::OK);
             assert_eq!(response.headers()["cache-control"], "no-store");
         }
-        for path in ["/", "/readyz", "/healthz/extra"] {
+        for path in ["/", "/readyz", "/healthz/extra", "/api/v1/transactions/bad"] {
             let response = router
                 .clone()
                 .oneshot(
@@ -672,6 +710,10 @@ mod tests {
                 .await
                 .unwrap();
             assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+            if path.starts_with("/api/") {
+                assert_eq!(response.headers()["content-type"], "application/json");
+                assert_eq!(response.headers()["retry-after"], "5");
+            }
         }
         assert!(
             node.state.lock().unwrap().hits.is_empty(),

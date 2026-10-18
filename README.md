@@ -13,6 +13,8 @@ Open **http://127.0.0.1:18099**. The example avoids a local nginx already using 
 
 ## Pages
 
+The optional native NexaWal explorer view uses the bounded, read-only **`GET /api/v1/transactions/{txid}`** endpoint. See [API.md](API.md) for schema, error semantics, privacy, and client opt-in behavior. It is not an arbitrary RPC relay and never accepts wallet secrets or private payment amounts. App translations cover the 54 existing locales; website translation remains separate.
+
 | Route | Purpose |
 | --- | --- |
 | `/` | Network snapshot, latest 10 blocks, and five-ID mempool preview |

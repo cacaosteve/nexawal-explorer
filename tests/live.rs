@@ -21,6 +21,16 @@ async fn public_node_smoke() {
     let details = decode_transaction(&entry, id).unwrap();
     assert!(details.fee.is_some());
     assert!(b.contains(id));
+    let observation = nexawal_explorer::api::transaction(&rpc, id).await.unwrap();
+    assert_eq!(observation.api_version, 1);
+    assert_eq!(observation.txid, *id);
+    assert_eq!(observation.status, "confirmed");
+    assert_eq!(observation.fee_piconero, details.fee.map(|f| f.to_string()));
+    assert_eq!(observation.block_height, Some(height));
+    assert_eq!(
+        observation.block_hash.as_deref(),
+        Some(b.block_header.hash.as_str())
+    );
     let miner = rpc
         .transaction(&snapshot, &b.miner_tx_hash)
         .await
