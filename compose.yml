@@ -1,0 +1,23 @@
+services:
+  explorer:
+    build: .
+    restart: unless-stopped
+    stop_grace_period: 25s
+    environment:
+      EXPLORER_RPC_URL: ${EXPLORER_RPC_URL:-https://rpc.nexatrode.com}
+      EXPLORER_BIND: 0.0.0.0:8080
+      EXPLORER_MAX_TIP_AGE_SECS: ${EXPLORER_MAX_TIP_AGE_SECS:-3600}
+    ports:
+      - "127.0.0.1:8088:8080"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 256m
+    cpus: 1.0
+    logging:
+      driver: local
+      options:
+        max-size: "5m"
+        max-file: "2"

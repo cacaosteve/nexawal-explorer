@@ -1,0 +1,38 @@
+# Example only. Do not replace the existing RPC/rates Caddyfile with this file.
+# Merge these logging settings into the ONE existing global options block, then
+# add the site below. Do not paste a second global block into a shared Caddyfile.
+# Keep other sites' logger settings. Other catch-all loggers must also exclude
+# http.log.error.nexawal_explorer. Request-bearing error messages cannot be
+# reliably sanitized by deleting structured fields alone.
+{
+    log default {
+        exclude http.log.error.nexawal_explorer
+    }
+    log nexawal_explorer_errors {
+        include http.log.error.nexawal_explorer
+        output discard
+    }
+}
+
+explorer.nexawal.com {
+    # Assign a site-specific namespace to BOTH access and HTTP error logs.
+    # Access and request-associated HTTP error events are discarded. General
+    # Caddy operational logs and unrelated sites' logs remain unchanged.
+    log nexawal_explorer {
+        output discard
+    }
+    reverse_proxy 127.0.0.1:8088
+    handle_errors {
+        header {
+            Cache-Control "no-store"
+            Referrer-Policy "no-referrer"
+            Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+            X-Content-Type-Options "nosniff"
+        }
+        respond "Explorer temporarily unavailable. Please try again shortly." 503
+    }
+}
+
+# Never enable global debug/HTTP handler tracing on a privacy-sensitive public
+# deployment: other modules can log requests outside the HTTP error namespace.
+# Infrastructure/provider logs have their own policies; audit them separately.
