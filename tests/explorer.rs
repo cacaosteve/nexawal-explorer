@@ -43,6 +43,15 @@ fn identifiers_are_strict_and_normalized() {
     assert_eq!(model::height("00042").unwrap(), 42);
 }
 
+#[tokio::test]
+async fn about_omits_unnecessary_affiliation_disclaimer() {
+    let app = web::router(Rpc::new("http://127.0.0.1:1").unwrap());
+    let (status, _, body) = request(app, "/about").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("MIT-licensed source"));
+    assert!(!body.contains("No affiliation with xmrchain.net."));
+}
+
 #[test]
 fn pruned_ringct_hash_and_fee_are_verified() {
     let entry: TxEntry = serde_json::from_value(tx()).unwrap();

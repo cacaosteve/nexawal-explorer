@@ -604,7 +604,7 @@ async fn about() -> Response {
         "<h2>Freshness and failures</h2><p>Node observations and successful RPC responses are cached in memory for at most five seconds. Chain-dependent cache keys include the observed tip hash and height. Browser pages are not cached. Confirmed transaction pages verify that the containing block returned by the node includes the transaction and use that block's timestamp.</p>",
         "<p>Tip timestamps are checked against the server clock and an operator-configured age limit. Stale, unknown, or implausibly future tips trigger warnings and fail readiness, even if the node reports synchronized. This is an operational heuristic, not independent consensus verification or proof of the latest chain. Genuine long block intervals or clock errors can trigger warnings.</p>",
         "<p>Node failures produce an explicit unavailable message, never a fabricated zero balance, zero fee, or empty chain. Node synchronization is reported separately. All dates are UTC.</p>",
-        "<h2>Software</h2><p>NexaWal Explorer 0.1.0. MIT-licensed source. Prototype: test against your deployed node before public exposure. No affiliation with xmrchain.net.</p></section>",
+        "<h2>Software</h2><p>NexaWal Explorer 0.1.0. MIT-licensed source. Prototype: test against your deployed node before public exposure.</p></section>",
     );
     view::page("About & privacy", body.into(), None, StatusCode::OK)
 }
