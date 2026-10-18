@@ -1,0 +1,27 @@
+# Standalone runtime file, not an override for the local compose.yml.
+# Build on the Mini host and load the commit-tagged image into cuprate-vm.
+name: nexawal-explorer
+services:
+  explorer:
+    image: ${EXPLORER_IMAGE:?Set EXPLORER_IMAGE to the deployed commit-tagged image}
+    pull_policy: never
+    restart: unless-stopped
+    stop_grace_period: 25s
+    environment:
+      EXPLORER_BIND: 0.0.0.0:8080
+      EXPLORER_RPC_URL: http://10.62.67.10:18092
+      EXPLORER_MAX_TIP_AGE_SECS: 3600
+    ports:
+      - "10.62.67.10:8088:8080"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 256m
+    cpus: 1.0
+    logging:
+      driver: local
+      options:
+        max-size: "5m"
+        max-file: "2"

@@ -3,6 +3,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY assets ./assets
+ARG CARGO_BUILD_JOBS=2
 RUN cargo build --locked --release
 
 FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587

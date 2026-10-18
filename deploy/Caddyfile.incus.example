@@ -1,0 +1,67 @@
+# Merge into the ONE existing global block. Requires the Mini's existing
+# mholt/caddy-ratelimit module. Never replace the RPC/rates sites with this file.
+{
+    log default {
+        exclude http.log.error.nexawal_explorer http.handlers.rate_limit
+    }
+    log nexawal_explorer_errors {
+        include http.log.error.nexawal_explorer
+        output discard
+    }
+    # This module logs visitor IPs even with log_key disabled. Remove only its
+    # IP/key fields for ALL rate-limit zones; keep zone/wait/count diagnostics.
+    # Unrelated HTTP access/error and operational log namespaces are unchanged.
+    log rate_limit_privacy {
+        include http.handlers.rate_limit
+        output stderr
+        format filter {
+            wrap json
+            fields {
+                remote_ip delete
+                key delete
+            }
+        }
+    }
+}
+
+explorer.nexawal.com {
+    log nexawal_explorer { output discard }
+    rate_limit {
+        zone explorer_per_ip_second {
+            key {remote_host}
+            events 10
+            window 1s
+            ipv6_prefix 64
+        }
+        zone explorer_per_ip_minute {
+            key {remote_host}
+            events 120
+            window 1m
+            ipv6_prefix 64
+        }
+    }
+    request_body { max_size 1KB }
+    reverse_proxy http://10.62.67.10:8088 {
+        transport http {
+            dial_timeout 3s
+            response_header_timeout 25s
+            read_timeout 25s
+            write_timeout 25s
+        }
+    }
+    handle_errors {
+        header {
+            Cache-Control "no-store"
+            Referrer-Policy "no-referrer"
+            Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+            X-Content-Type-Options "nosniff"
+        }
+        @limited expression {err.status_code} == 429
+        handle @limited {
+            respond "Too many requests. Please try again shortly." 429
+        }
+        handle {
+            respond "Explorer temporarily unavailable. Please try again shortly." 503
+        }
+    }
+}
