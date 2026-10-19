@@ -36,6 +36,10 @@ fn routes(app: App) -> Router {
         .route("/block/{id}", get(block))
         .route("/tx/{id}", get(transaction))
         .route("/api/v1/transactions/{id}", get(api_transaction))
+        .route(
+            "/api/v1/transactions/{id}/details/{page}",
+            get(api_transaction_details),
+        )
         .route("/mempool", get(mempool))
         .route("/search", get(search))
         .route("/about", get(about))
@@ -142,6 +146,27 @@ async fn api_transaction(
         return crate::api::fail(Error::InvalidInput);
     }
     match crate::api::transaction(&app.rpc, &id).await {
+        Ok(observation) => Json(observation).into_response(),
+        Err(error) => crate::api::fail(error),
+    }
+}
+
+async fn api_transaction_details(
+    State(app): State<App>,
+    Path((id, page)): Path<(String, String)>,
+    uri: axum::http::Uri,
+) -> Response {
+    if uri.query().is_some() {
+        return crate::api::fail(Error::InvalidInput);
+    }
+    let page = match model::height(&page)
+        .ok()
+        .and_then(|n| usize::try_from(n).ok())
+    {
+        Some(page) if page < 410 => page,
+        _ => return crate::api::fail(Error::InvalidInput),
+    };
+    match crate::api::transaction_page(&app.rpc, &id, Some(page)).await {
         Ok(observation) => Json(observation).into_response(),
         Err(error) => crate::api::fail(error),
     }
@@ -459,7 +484,7 @@ async fn transaction(
         if let Some(t) = confirmed_block_time {
             body.push_str(&format!("<dl>{}</dl>", row("Block time", &view::time(t))));
         }
-    } else if let Some(t) = entry.received_timestamp {
+    } else if let Some(t) = entry.received_timestamp.filter(|t| *t > 0) {
         body.push_str(&format!(
             "<dl>{}</dl>",
             row("Observed by node", &view::time(t))

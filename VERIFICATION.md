@@ -2,6 +2,33 @@
 
 Initial implementation checks followed by the deployment record below. Not an independent security audit.
 
+## Advanced API / native parity — local changes, not deployed
+
+- **41 offline explorer tests** and strict Clippy passed. Coverage includes verified
+  advanced responses, explicit conflict flags, malformed/out-of-range pages,
+  pruned/coinbase/legacy metadata, and worst-case row/index/hex/response bounds.
+- A read-only Cuprate smoke with the new local API implementation passed against
+  `https://rpc.nexawal.com` at height 3,787,124. No wallet material or funds were
+  used; the production explorer binary was not changed by this test.
+- Native verification passed: **106 Swift logic tests**, iOS Release simulator
+  build (signing disabled), **73 Android app tests** and unsigned Release APK,
+  **121 GPUI tests** and Release build. Delayed page replies are tested through
+  cancellation/collapse/background paths without changing wallet state.
+- API and all three native parsers use byte-identical synthetic contract fixtures
+  (`node Scripts/check-client-fixtures.mjs`). Shared parsing tests cover last
+  pages, exact u64 amounts, hidden RingCT amounts, nullable metadata and bad types.
+- Summary plus 25 advanced labels/warnings cover all 54 existing app locales.
+  Actual Android values and iOS/GPUI parity checks pass; three Node regression
+  tests also pass. Draft translations still need human safety-wording review.
+- Existing default-off/manual-only consent, clearnet disclosure, deadlines,
+  no persistent response cache and no wallet-record overrides remain in place.
+  No WalletCore pins, Xcode scheme, secrets, stores, nodes or DNS were changed.
+- These updates remain local/uncommitted and need a server deployment before
+  the live `/details/{page}` endpoint is available. Physical-device/native UI
+  smoke testing still applies; no claim of signed-device QA is made here.
+
+## Initial implementation checks
+
 - Rust 1.96.0 on macOS: formatting, Clippy with warnings denied, and **34 offline tests** passed, including a subprocess SIGTERM shutdown regression.
 - Opt-in read-only integration test passed against **https://rpc.nexatrode.com** (Cuprate): node snapshot, header range, block by height/hash, normal transfer, miner transaction, genesis, explicit missing transaction, and two-entry mempool sample. No wallet keys or funds used.
 - Live node behavior checked: `target_height: 0` while synchronized is valid; `decode_as_json: true` is unsupported; empty block/transaction arrays may be omitted. Compatibility tests cover these cases.

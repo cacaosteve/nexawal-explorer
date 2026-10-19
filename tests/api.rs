@@ -122,3 +122,85 @@ async fn failures_never_become_missing_or_zero_observations() {
         assert!(status.is_client_error());
     }
 }
+
+#[tokio::test]
+async fn advanced_endpoint_keeps_summary_verification_and_explicit_conflict() {
+    let (status, body) = lookup(
+        Fake {
+            conflict: true,
+            ..Fake::default()
+        },
+        &format!("/api/v1/transactions/{TXID}/details/0"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["double_spend_seen"], true);
+    assert_eq!(body["fee_piconero"], "44540000");
+    let d = &body["details"];
+    assert_eq!(d["version"], 2);
+    assert_eq!(d["page"], 0);
+    assert_eq!(d["page_size"], 10);
+    assert_eq!(d["input_count"], 2);
+    assert_eq!(d["output_count"], 2);
+    assert!(d["serialized_size_bytes"].is_null() && d["weight"].is_null());
+    assert_eq!(d["inputs"][0]["ring_size"], 16);
+    assert_eq!(
+        d["inputs"][0]["absolute_indices"].as_array().unwrap().len(),
+        16
+    );
+    assert!(d["outputs"][0]["public_amount_piconero"].is_null());
+    assert!(d["outputs"][0]["global_index"].is_string());
+    assert!(serde_json::to_vec(&body).unwrap().len() < 65_536);
+    // Shared with all native parsers; detect serializer/consumer field drift.
+    let contract: Value =
+        serde_json::from_str(include_str!("fixtures/client_advanced_page0.json")).unwrap();
+    for (actual, expected) in [
+        (&body, &contract),
+        (&body["details"], &contract["details"]),
+        (
+            &body["details"]["inputs"][0],
+            &contract["details"]["inputs"][0],
+        ),
+        (
+            &body["details"]["outputs"][0],
+            &contract["details"]["outputs"][0],
+        ),
+    ] {
+        assert_eq!(
+            actual.as_object().unwrap().keys().collect::<Vec<_>>(),
+            expected.as_object().unwrap().keys().collect::<Vec<_>>()
+        );
+    }
+    let (_, summary) = lookup(
+        Fake {
+            conflict: true,
+            ..Fake::default()
+        },
+        &format!("/api/v1/transactions/{TXID}"),
+    )
+    .await;
+    assert_eq!(summary["double_spend_seen"], true);
+    assert!(summary.get("details").is_none());
+    for suffix in ["1", "410", "-1", "999999999999999999999999", "0?anything=1"] {
+        let (status, _) = lookup(
+            Fake::default(),
+            &format!("/api/v1/transactions/{TXID}/details/{suffix}"),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+    }
+    for fake in [
+        Fake {
+            wrong_blob: true,
+            ..Fake::default()
+        },
+        Fake {
+            no_membership: true,
+            ..Fake::default()
+        },
+    ] {
+        let (status, body) = lookup(fake, &format!("/api/v1/transactions/{TXID}/details/0")).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert!(body.get("details").is_none());
+    }
+}

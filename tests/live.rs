@@ -25,6 +25,21 @@ async fn public_node_smoke() {
     assert_eq!(observation.api_version, 1);
     assert_eq!(observation.txid, *id);
     assert_eq!(observation.status, "confirmed");
+    let advanced = nexawal_explorer::api::transaction_page(&rpc, id, Some(0))
+        .await
+        .unwrap();
+    let page = advanced.details.unwrap();
+    assert_eq!(page.page, 0);
+    assert_eq!(page.page_size, 10);
+    assert!(page.inputs.len() <= 10 && page.outputs.len() <= 10);
+    assert!(page
+        .inputs
+        .iter()
+        .all(|row| row.absolute_indices.len() <= 128));
+    assert!(page
+        .outputs
+        .iter()
+        .all(|row| page.coinbase || row.public_amount_piconero.is_none()));
     assert_eq!(observation.fee_piconero, details.fee.map(|f| f.to_string()));
     assert_eq!(observation.block_height, Some(height));
     assert_eq!(

@@ -33,6 +33,7 @@ pub struct Fake {
     pub reorg: bool,
     pub missing: bool,
     pub pool: bool,
+    pub conflict: bool,
     pub wrong_blob: bool,
     pub no_membership: bool,
     pub incomplete: bool,
@@ -136,6 +137,7 @@ async fn handle(
             } else {
                 let mut tx = tx();
                 tx["in_pool"] = json!(f.pool);
+                tx["double_spend_seen"] = json!(f.conflict);
                 if let Some(t) = f.transaction_timestamp {
                     tx["block_timestamp"] = json!(t);
                 }

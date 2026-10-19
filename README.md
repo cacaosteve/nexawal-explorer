@@ -13,7 +13,7 @@ Open **http://127.0.0.1:18099**. The example avoids a local nginx already using 
 
 ## Pages
 
-The optional native NexaWal explorer view uses the bounded, read-only **`GET /api/v1/transactions/{txid}`** endpoint. See [API.md](API.md) for schema, error semantics, privacy, and client opt-in behavior. It is not an arbitrary RPC relay and never accepts wallet secrets or private payment amounts. App translations cover the 54 existing locales; website translation remains separate.
+The optional native NexaWal explorer view uses the bounded, read-only **`GET /api/v1/transactions/{txid}`** summary and **`GET /api/v1/transactions/{txid}/details/{page}`** advanced pages. Expanding/paging is manual, with 10 inputs/outputs per page and marked preview limits. Conflicting-spend warnings are also included in the compact summary. See [API.md](API.md) for schema, error semantics, privacy, and client opt-in behavior. This is not an arbitrary RPC relay and never accepts wallet secrets or private payment amounts. App translations cover the 54 existing locales; website translation remains separate.
 
 | Route | Purpose |
 | --- | --- |
@@ -75,7 +75,7 @@ The container is non-root, read-only, capability-dropped and limited to 256 MiB 
 
 `deploy/Caddyfile.example` contains **scoped global logging settings plus an example site for explorer.nexawal.com**, not a replacement for existing rates/RPC Caddy configuration. Merge settings into the one existing global block and preserve other sites' configuration.
 
-The Mini deployment is live at **https://explorer.nexawal.com**. Its separate container runs in `cuprate-vm` and host Caddy proxies to the private VM interface. See [the deployment runbook](deploy/README.md), `deploy/compose.incus.yml`, and the custom rate-limited `deploy/Caddyfile.incus.example`. The local Compose file above is not the VM runtime file. No chain database is mounted and Cuprate need not restart. I2P setup and changes to wallet explorer links remain separate work; the wallet apps still point to xmrchain.net.
+The Mini deployment is live at **https://explorer.nexawal.com**. Its separate container runs in `cuprate-vm` and host Caddy proxies to the private VM interface. See [the deployment runbook](deploy/README.md), `deploy/compose.incus.yml`, and the custom rate-limited `deploy/Caddyfile.incus.example`. The local Compose file above is not the VM runtime file. No chain database is mounted and Cuprate need not restart. Wallet links use this domain. New API features require deploying the corresponding server binary; source changes alone do not update the running container. I2P hosting remains separate work.
 
 Railway can run the same image with `EXPLORER_BIND=0.0.0.0:8080`, target port 8080 and an explicitly configured RPC URL. No Railway deployment is performed by this repo. Docker bases are digest-pinned, but Debian package repositories are not snapshotted: this is not a byte-reproducible-image claim. Update base digests deliberately for security maintenance.
 
@@ -95,7 +95,7 @@ EXPLORER_TEST_RPC_URL=https://rpc.nexawal.com cargo test --locked --test live --
 
 ## Deliberately deferred
 
-Chain-wide emission charts / historical analytics (would need an explorer-owned reorg-aware index), resolved ring-member drilldown, transaction-proof tools, transaction broadcasting, address/view-key scanning, automatic node failover, and translations. The initial interface is English; no incomplete translations are advertised. No production/public deployment or independent audit is implied.
+Chain-wide emission charts / historical analytics (would need an explorer-owned reorg-aware index), resolved ring-member drilldown, transaction-proof tools, transaction broadcasting, address/view-key scanning, automatic node failover, and website translations. The website interface remains English; native app copy is localized separately. Deployment checks do not constitute an independent security audit.
 
 ## License and references
 

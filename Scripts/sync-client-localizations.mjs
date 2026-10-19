@@ -3,8 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
+import { names, androidLocale, escapeAndroid as escaped } from './client-localization-checks.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const catalog = JSON.parse(fs.readFileSync(path.join(root, 'nexawal-explorer/client-strings.json'), 'utf8'));
+const advanced = JSON.parse(fs.readFileSync(path.join(root, 'nexawal-explorer/client-advanced-strings.json'), 'utf8'));
+assert.deepEqual(Object.keys(advanced.locales).sort(), Object.keys(catalog).sort());
 const iosPath = path.join(root, 'nexawal/nexawal/Localizable.xcstrings');
 const gpuiPath = path.join(root, 'nexawal-gpui/assets/l10n.json');
 const ios = JSON.parse(fs.readFileSync(iosPath, 'utf8'));
@@ -20,10 +23,7 @@ for (const line of gpuiText.split('\n')) {
   const key = line.match(/^    ("(?:[^"\\]|\\.)*"): /);
   if (key && language) order[language].push(JSON.parse(key[1]));
 }
-const names = ['details', 'enable', 'help', 'reported', 'disabled', 'missing', 'unavailable', 'node_stale', 'observed', 'mainnet', 'refresh', 'save_failed'];
 assert.deepEqual(Object.keys(catalog).sort(), Object.keys(gpui).sort());
-const escaped = s => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll("'", "\\'").replaceAll('"', '\\"');
-const androidLocale = {en:'',fil:'tl',id:'in','pt-BR':'pt-rBR','zh-Hans':'zh-rCN','zh-Hant':'zh-rTW'};
 for (const [locale, strings] of Object.entries(catalog)) {
   assert.equal(strings.length, names.length, locale);
   strings.forEach((value, index) => {
@@ -42,6 +42,18 @@ for (const [locale, strings] of Object.entries(catalog)) {
   rows.push(`    <string name="explorer_observed_fmt">${escaped(strings[8])}: %1$s</string>`);
   const xml = `<?xml version="1.0" encoding="utf-8"?>\n<!-- Draft translations synchronized by nexawal-explorer/Scripts/sync-client-localizations.mjs. -->\n<resources>\n${rows.join('\n')}\n</resources>\n`;
   fs.writeFileSync(path.join(dir, 'explorer.xml'), xml);
+  const values = advanced.locales[locale];
+  assert.equal(values.length, advanced.names.length, locale);
+  values.forEach((value, i) => {
+    assert.equal(typeof value, 'string'); assert.ok(value.trim(), `${locale}: ${i}`);
+    const key = advanced.locales.en[i];
+    ios.strings[key] ??= {extractionState:'manual', localizations:{}};
+    ios.strings[key].localizations ??= {};
+    // Next is an existing shared label; retain native shared translations.
+    if (i !== 11 || !ios.strings[key].localizations[locale]) ios.strings[key].localizations[locale] = {stringUnit:{state:'translated',value}};
+    if (i !== 11 || !gpui[locale][key]) gpui[locale][key] = value;
+  });
+  fs.writeFileSync(path.join(dir, 'explorer_advanced.xml'), `<?xml version="1.0" encoding="utf-8"?>\n<!-- Draft translations synchronized by nexawal-explorer/Scripts/sync-client-localizations.mjs. -->\n<resources>\n${values.map((value,i)=>`    <string name="explorer_${advanced.names[i]}">${escaped(value)}</string>`).join('\n')}\n</resources>\n`);
 }
 fs.writeFileSync(iosPath, JSON.stringify(ios, null, 2)+'\n');
 const sections = Object.entries(gpui).map(([locale, strings]) => {
@@ -49,4 +61,4 @@ const sections = Object.entries(gpui).map(([locale, strings]) => {
   return `  ${JSON.stringify(locale)}: {\n${keys.map(key => `    ${JSON.stringify(key)}: ${JSON.stringify(strings[key])}`).join(',\n')}\n  }`;
 });
 fs.writeFileSync(gpuiPath, `{\n${sections.join(',\n')}\n}\n`);
-console.log(`Synchronized ${names.length} explorer strings across ${Object.keys(catalog).length} locales in all three clients.`);
+console.log(`Synchronized ${names.length} summary and ${advanced.names.length} advanced explorer strings across ${Object.keys(catalog).length} locales in all three clients.`);

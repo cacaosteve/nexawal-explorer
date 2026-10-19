@@ -221,6 +221,8 @@ pub struct TxDetails {
     pub outputs: Vec<TxOutput>,
     pub extra: String,
     pub unlock: String,
+    pub unlock_kind: &'static str,
+    pub unlock_value: u64,
 }
 
 /// Parse public transaction data only. No wallet scanning, keys, or signing code is used.
@@ -318,6 +320,11 @@ pub fn decode_transaction(entry: &TxEntry, expected: &str) -> Result<TxDetails> 
             });
         }
     }
+    let (unlock_kind, unlock_value) = match prefix.additional_timelock {
+        monero_oxide::transaction::Timelock::None => ("none", 0),
+        monero_oxide::transaction::Timelock::Block(h) => ("height", h as u64),
+        monero_oxide::transaction::Timelock::Time(t) => ("timestamp", t),
+    };
     Ok(TxDetails {
         version: tx.version(),
         coinbase,
@@ -343,5 +350,7 @@ pub fn decode_transaction(entry: &TxEntry, expected: &str) -> Result<TxDetails> 
             .collect(),
         extra: hex::encode(&prefix.extra),
         unlock: format!("{:?}", prefix.additional_timelock),
+        unlock_kind,
+        unlock_value,
     })
 }
